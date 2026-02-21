@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<title>AI <Rp></Rp>outer</title>
+
+<link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+        Local AI Router
+    </div>
+
+    <div id="chat" class="chat"></div>
+
+    <div class="input-area">
+
+       <input id="msg" placeholder="Type your message..." onkeydown="if(event.key==='Enter') send()">
+         <select id="model">
+            <option value="mistral">Mistral</option>
+            <option value="phi3">Phi-3</option>
+            <option value="gpt-4o-mini">GPT-4o Mini</option>
+            </select>
+
+
+        <button onclick="send()">
+            Send
+        </button>
+
+        <button class="upload-btn" onclick="document.getElementById('file').click()">
+            📎
+        </button>
+        <div id="chat"></div>
+
+           
+           
+
+            <input type="file" id="file">
+
+            <button onclick="send()">Send</button>
+           
+
+
+    </div>
+ <button onclick="compare()">Compare</button>
+
+</div>
+
+<script src="/static/script.js"></script>
+
+</body>
+</html>
