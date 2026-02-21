@@ -1,148 +1,108 @@
-const chat = document.getElementById("chat")
-const input = document.getElementById("msg")
-const fileInput = document.getElementById("file")
-
-
-// ========================
-// ADD MESSAGE
-// ========================
-
-function addMessage(text, sender) {
-
-    const div = document.createElement("div")
-
-    div.className = "message " + sender
-
-    div.innerText = text
-
-    chat.appendChild(div)
-
-    chat.scrollTop = chat.scrollHeight
-
-    return div
+function escapeHtml(text){
+return String(text)
+  .replaceAll("&","&amp;")
+  .replaceAll("<","&lt;")
+  .replaceAll(">","&gt;")
+  .replaceAll('"',"&quot;")
+  .replaceAll("'","&#39;")
 }
 
+function renderCompareTable(data){
+const rows=Object.entries(data).map(([model,response])=>`
+<tr>
+<td class="model-cell">${escapeHtml(model)}</td>
+<td class="response-cell">${escapeHtml(response ?? "")}</td>
+</tr>
+`).join("")
 
-// ========================
-// SEND MESSAGE
-// ========================
+return `
+<table class="results-table">
+<thead>
+<tr>
+<th>Model</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>${rows}</tbody>
+</table>
+`
+}
 
 async function send(){
 
-    const text = input.value.trim()
+const msg=document.getElementById("msg").value
+const output=document.getElementById("output")
+const model="gemini-1.5-flash"
 
-    if(!text) return
+const res=await fetch("/chat",{
 
-    addMessage(text, "user")
+method:"POST",
 
-    input.value = ""
+headers:{"Content-Type":"application/json"},
 
-    const botDiv = addMessage("", "bot")
+body:JSON.stringify({
 
-    try{
+message:msg,
 
-        const res = await fetch("/chat", {
+model:model
 
-            method:"POST",
+})
 
-            headers:{
-                "Content-Type":"application/json"
-            },
+})
 
-            body:JSON.stringify({
-                message:text,
-                model:"mistral"
-            })
-        })
+const data=await res.json()
 
+output.innerHTML=`
+<table class="results-table">
+<thead>
+<tr><th>Model</th><th>Response</th></tr>
+</thead>
+<tbody>
+<tr>
+<td class="model-cell">${escapeHtml(model)}</td>
+<td class="response-cell">${escapeHtml(data.response ?? "")}</td>
+</tr>
+</tbody>
+</table>
+`
 
-        if(res.status === 404){
-
-            botDiv.innerText = "ERROR: /chat endpoint not found"
-
-            return
-        }
-
-
-        const reader = res.body.getReader()
-
-        const decoder = new TextDecoder()
-
-
-        while(true){
-
-            const {done,value} = await reader.read()
-
-            if(done) break
-
-            botDiv.innerText += decoder.decode(value)
-
-            chat.scrollTop = chat.scrollHeight
-        }
-
-    }
-    catch(err){
-
-        botDiv.innerText = "Connection error"
-
-        console.error(err)
-    }
 }
 
 
-// ========================
-// FILE UPLOAD
-// ========================
 
-fileInput?.addEventListener("change", async function () {
+async function compare(){
+const output=document.getElementById("output")
+const msg=document.getElementById("msg").value.trim()
 
-    const file = fileInput.files[0]
+if(!msg){
+output.textContent="Please enter a message first."
+return
+}
 
-    if (!file) return
-
-    addMessage("Uploading: " + file.name, "user")
-
-    const botDiv = addMessage("", "bot")
-
-    try {
-
-        const response = await fetch("/upload", {
-
-            method: "POST",
-
-            body: new FormData().append("file", file)
-
-        })
-
-        if(response.status === 404){
-
-            botDiv.innerText = "ERROR: /upload not found"
-
-            return
-        }
-
-        botDiv.innerText = "File processed"
-
-    }
-    catch {
-
-        botDiv.innerText = "Upload failed"
-
-    }
-
+try{
+const res=await fetch("/compare",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+message:msg,
+models:["gemini-1.5-flash","gemini-1.5-flash-8b"]
+})
 })
 
+let data
+try{
+data=await res.json()
+}catch{
+throw new Error(`Server returned ${res.status} ${res.statusText} and not JSON.`)
+}
 
-// ========================
-// ENTER SUPPORT
-// ========================
+if(!res.ok){
+throw new Error(data.error||`Request failed with status ${res.status}.`)
+}
 
-input?.addEventListener("keydown", function (event) {
+output.innerHTML=renderCompareTable(data)
+}catch(err){
+output.textContent=`Compare failed: ${err.message}`
+}
 
-    if (event.key === "Enter") {
-
-        send()
-
-    }
-
-})
+}
